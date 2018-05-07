@@ -11,7 +11,16 @@
 #
 # Dependencies are stored in the Makefile.dep file. To rebuild this file
 # Just use 'make dep', but this is only needed by developers.
-
+#make执行步骤
+#1,读入include的Makefile
+#2,初始化文件变量
+#3,推导隐晦规则,分析所有规则
+#4,为所有的目标文件创建关系链
+#5,根据依赖关系,决定哪些目标需要重新生成
+#6,执行生成命令
+#Makefile中指定规则的语法
+#targets:prerequisites
+#    command(shell命令,遍历或链接,command需要以Tab键开头)
 release_hdr := $(shell sh -c './mkreleasehdr.sh')
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 OPTIMIZATION?=-O2
@@ -27,6 +36,8 @@ INSTALL_BIN=$(PREFIX)/bin
 INSTALL=install
 
 # Default allocator
+# libc是标准的内存管理库,jemalloc是Facebook退出的内存管理库
+# jemalloc减少内存碎片
 ifeq ($(uname_S),Linux)
 	MALLOC=jemalloc
 else
@@ -100,6 +111,8 @@ MAKECOLOR="\033[32;1m"
 ENDCOLOR="\033[0m"
 
 ifndef V
+#@避免make把要执行的命令输出到屏幕上(避免输出printf)
+#printf格式化输出,%b输出转义字符串
 QUIET_CC = @printf '    %b %b\n' $(CCCOLOR)CC$(ENDCOLOR) $(SRCCOLOR)$@$(ENDCOLOR) 1>&2;
 QUIET_LINK = @printf '    %b %b\n' $(LINKCOLOR)LINK$(ENDCOLOR) $(BINCOLOR)$@$(ENDCOLOR) 1>&2;
 QUIET_INSTALL = @printf '    %b %b\n' $(LINKCOLOR)INSTALL$(ENDCOLOR) $(BINCOLOR)$@$(ENDCOLOR) 1>&2;
@@ -122,11 +135,14 @@ all: $(REDIS_SERVER_NAME) $(REDIS_SENTINEL_NAME) $(REDIS_CLI_NAME) $(REDIS_BENCH
 	@echo "Hint: To run 'make test' is a good idea ;)"
 	@echo ""
 
+#.PHONY 表示all是个伪目标文件
 .PHONY: all
 
 # Deps (use make dep to generate this)
+# 引用别的Makefile,会在当前目录下首先寻找,如果没有找到会在1,make -I(--include-dir) 编译指定的目录寻找,和2,/usr/local/include,/usr/include 下寻找
 include Makefile.dep
 
+#gcc -MM 命令生成(打印)目标文件和源码文件的对应关系
 dep:
 	$(REDIS_CC) -MM *.c > Makefile.dep
 
@@ -190,6 +206,7 @@ $(REDIS_CHECK_AOF_NAME): $(REDIS_CHECK_AOF_OBJ)
 %.o: %.c .make-prerequisites
 	$(REDIS_CC) -c $<
 
+#make clean ,删除文件
 clean:
 	rm -rf $(REDIS_SERVER_NAME) $(REDIS_SENTINEL_NAME) $(REDIS_CLI_NAME) $(REDIS_BENCHMARK_NAME) $(REDIS_CHECK_DUMP_NAME) $(REDIS_CHECK_AOF_NAME) *.o *.gcda *.gcno *.gcov redis.info lcov-html
 
